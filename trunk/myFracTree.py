@@ -160,6 +160,19 @@ class Branch(NodePath):
             self.drawBody(node.pos, node.quat, node.radius,node.texUV)
         return self.nodeList
         
+    def growSelf(self):
+        [gH,gP,gR] = self.getHpr(base.render) # get this branch global Hpr for later
+        sampList = [self.nodeList[-1]]
+        print "Samplelist: ", sampList
+        for nd in sampList: 
+            budPos = nd.pos
+            maxL = lfact*self.length
+            rad = rfact*nd.radius # NEW GEN RADIUS - THIS SHOULD BE A PARAMETER!!!
+    
+#            budRot = random.randint(-hdg[1],hdg[1]) # add some noise to the trunk bud angles
+            budHpr = Vec3(gH,gP,gR) # at least 1 branch continues on current heading                    
+            self.buds.append([budPos,rad,budHpr,maxL])
+        
     def addNewBuds(self): 
 #TODO: GENERALIZE THIS SECTION
 #        budPos = budHpr = []
@@ -172,24 +185,23 @@ class Branch(NodePath):
         
 #        sampList = random.sample(self.nodeList[_skipChildren:-1],5)
         sampList = [self.nodeList[-1]]
-        for nd in sampList: # just use nodes for now
+        #TODO just use nodes for now. CHANGE to something like random along current length
+        for nd in sampList: 
             budPos = nd.pos
             maxL = lfact*self.length
             rad = rfact*nd.radius # NEW GEN RADIUS - THIS SHOULD BE A PARAMETER!!!
     
             #Child branch Ang func - orient the node after creation
             # trunk bud multiple variables
-            budsPerNode = random.randint(1,3) +1    # +1 since 1 branch will always "continue"
+            budsPerNode = random.randint(1,1) + 1    # +1 since 1 branch will always "continue"
             hdg = range(0,360,360/budsPerNode)
 #            budRot = random.randint(-hdg[1],hdg[1]) # add some noise to the trunk bud angles
             for i,h in enumerate(hdg):                        
                 angP = random.gauss(budP0,budPnoise)
                 angR = random.randint(-45,45)
-                if i==0:
-                    budHpr = Vec3(gH,gP,gR) # at least 1 branch continues on current heading                    
-                else:
+                if i>0:
                     budHpr = Vec3(gH+h,angP,angR)
-                self.buds.append([budPos,rad,budHpr,maxL])
+                    self.buds.append([budPos,rad,budHpr,maxL])
                 
     def interpLen(self,inLen):
 #BranchNode = namedtuple('BranchNode','pos radius fromVector quat texUV deltaL d2t') 
@@ -261,7 +273,7 @@ class GeneralTree(NodePath):
         bff = kwargs['baseflair']
         self.trunk.generate(Params,baseFlair=bff)
         self.trunk.addNewBuds()
-        children = [self.trunk] # each node in the trunk will span a branch 
+        children = [self.trunk] # each node in the trunk will spawn a branch 
         nextChildren = []
         leafNodes = []
         
@@ -352,7 +364,7 @@ if __name__ == "__main__":
     lfact = 0.8   # length ratio between branch generations
     # often skipChildren works best as a function of total lenggth, not just node count        
     rfact = 1     # radius ratio between generations
-    rTaper = .65 # taper factor; % reduction in radius between tip and base ends of branch
+    rTaper = .25 # taper factor; % reduction in radius between tip and base ends of branch
     budP0 = 45    # a new bud's nominal pitch angle
     
     budPnoise = 10 # variation in bud's pitch angle
@@ -365,9 +377,9 @@ if __name__ == "__main__":
 #    _BarkTex_ ='./resources/models/barkTexture-1z.jpg'
     
 
-    # LEAF PARAMETERS
+    # LEAF PARAMETERScB5HS2xT4MZ5
 #    _LeafTex = 'Green Leaf.png'
-    _LeafModel = 'myLeafModel6.x'
+    _LeafModel = 'myLeafModel.x'
 #    _LeafModel = 'shrubbery'
 #    _LeafTex = 'material-10-cl.png'
     
@@ -378,7 +390,7 @@ if __name__ == "__main__":
 #    leafMod.setScale(2,2,1)
     leafMod.flattenStrong()
     _LeafScale = 3
-    _DoLeaves = 1 # not ready for prime time; need to add drawLeaf to Tree Class
+    _DoLeaves = 0 # not ready for prime time; need to add drawLeaf to Tree Class
  
     bark = base.loader.loadTexture(_BarkTex_)    
 
@@ -389,7 +401,7 @@ if __name__ == "__main__":
     np = 6
     plts = range(np**2) # 6x6 array
     ds = 5.0
-    for it in range(10):
+    for it in range(1):
         tree = GeneralTree(L0,R0,numSegs,bark,"my tree")
         cnp = tree.attachNewNode(CollisionNode('TreeCollisionSolid'))        
         cnp.node().addSolid(CollisionTube(0,0,R0,0,0,R0+3, R0))
@@ -410,6 +422,7 @@ if __name__ == "__main__":
         tx = ds*(p/np)
         ty = ds*(p%np)
         tree.setPos(tx,ty,0)
+        tree.setPos(0,0,0)
 
 ##############################
 
@@ -436,7 +449,15 @@ if __name__ == "__main__":
     base.render.analyze()
     base.run()
 
-#TODO: 
+#TODO
+#2013.04.24: Rework. 
+                    # each "branch" will grow ~f(generation). 
+                    # buds will spawn at semi random locations along the length of a branch
+                    # every 'generation' (season) will produce 0 - N new buds/ child-branches
+#            The .addbud method will be split into a .grow and .addbuds methods to accomplish above
+                
+                         
+##### OLD COMMENTS PRE SPLIT ON 2013.04.24    
 #   - clean up: move branch Hpr out of bud and into child branch property
 #    - choose "bud" locations other than branch nodes and random circumfrentially.
 #    - numSegs to parameter into branch; numSegs = f(generation), fewer on younger
@@ -447,4 +468,4 @@ if __name__ == "__main__":
 #     Distribute branches uniform around radius. 
 #     "Crown" the trunk; possibly branches. - single point; no rad func and connect all previous nodes to point
 #     define circumference function (pull out of drawBody())
-# 
+#####
